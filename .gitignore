@@ -187,6 +187,7 @@ cython_debug/
 #   and can be added to the global gitignore or merged into this file.  For a more nuclear
 #   option (not recommended) you can uncomment the following to ignore the entire idea folder.
 # .idea/
+.idea/
 
 # Abstra
 #   Abstra is an AI-powered process automation framework.
@@ -200,6 +201,7 @@ cython_debug/
 #   and can be added to the global gitignore or merged into this file. However, if you prefer, 
 #   you could uncomment the following to ignore the entire vscode folder
 # .vscode/
+.vscode/
 # Temporary file for partial code execution
 tempCodeRunnerFile.py
 
@@ -216,3 +218,27 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Operating-system files
+.DS_Store
+Thumbs.db
+
+# Common generated and temporary files
+*.pyc
+*.pyo
+*.log
+*.aux
+*.out
+*.tmp
+*.bak
+
+# Generated experiment and MATLAB outputs
+performance_fair.mat
+SCI_Figures/
+SCI_KeySensitivity_Figures/
+SCI_PlaintextAvalanche_Figures/
+fig_integrity_compare/
+Autocorrelation_Comparison.tif
+Entropy_Comparison_Plot.tif
+fig_entropy_robustness.tif
+fig_entropy_robustness_bar.tif
