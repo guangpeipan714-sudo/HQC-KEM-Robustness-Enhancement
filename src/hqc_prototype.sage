@@ -15,6 +15,11 @@ import operator
 import scipy.io as sio
 import statistics
 import time, gc, statistics
+import csv
+import json
+import platform
+import sys
+import tracemalloc
 def b1(x):
     return bytes([int(x) & 0xFF])
 
@@ -2042,3 +2047,505 @@ def run_fair_benchmark(warmup=10, repeat=100):
     print("=" * 60)
     savemat('performance_fair.mat',
             {'keygen_delta_pct': dk, 'encaps_delta_pct': de, 'decaps_delta_pct': dd})
+
+
+# ============================================================
+# Engineering microbenchmarks at standardized HQC transcript sizes
+# ============================================================
+# Sizes are taken from NIST IR 8545 (March 2025).  These profiles are
+# deliberately used only to size byte-string inputs to the enhancement layer.
+# This reduced-scale SageMath prototype is not presented as a conforming
+# implementation of the corresponding HQC parameter sets.
+HQC_STANDARD_SIZE_PROFILES = (
+    {"name": "HQC-128", "nist_level": 1, "public_key_bytes": 2249,
+     "ciphertext_bytes": 4497, "shared_secret_bytes": 32},
+    {"name": "HQC-192", "nist_level": 3, "public_key_bytes": 4522,
+     "ciphertext_bytes": 9042, "shared_secret_bytes": 32},
+    {"name": "HQC-256", "nist_level": 5, "public_key_bytes": 7245,
+     "ciphertext_bytes": 14485, "shared_secret_bytes": 32},
+)
+
+
+def _shake_bytes(label, out_len):
+    """Deterministically generate benchmark input bytes outside timed regions."""
+    h = hashlib.shake_256()
+    h.update(bytes(label))
+    return h.digest(int(out_len))
+
+
+def _kdf_mix_len(base_ss, chaos_kdf_bytes, context_bytes, out_len):
+    """Length-parameterized form of kdf_mix for standard-size microbenchmarks."""
+    h = hashlib.shake_256()
+    h.update(base_ss)
+    h.update(chaos_kdf_bytes)
+    h.update(context_bytes)
+    h.update(b1(KDF_MIX_DOMAIN))
+    return h.digest(int(out_len))
+
+
+def _baseline_transcript_kdf(base_ss, transcript, out_len):
+    """Matched SHAKE256 baseline with no Q64-derived context-binding layer."""
+    h = hashlib.shake_256()
+    h.update(base_ss)
+    h.update(transcript)
+    h.update(b1(K_FCT_DOMAIN))
+    return h.digest(int(out_len))
+
+
+def _baseline_entropy_expand(label_bytes, primary_bytes, out_len):
+    """Matched SHAKE256-only expansion for the entropy-module comparison."""
+    h = hashlib.shake_256()
+    h.update(label_bytes)
+    h.update(primary_bytes)
+    h.update(b1(RNG_MIX_DOMAIN))
+    return h.digest(int(out_len))
+
+
+def _enhanced_transcript_kdf(pk_bytes, ct_bytes, base_ss, out_len):
+    """Exercise the proposed public-transcript binding layer on byte strings."""
+    # NIST's reported ciphertext size is used in full.  The split is only an
+    # API adapter for derive_shared_chaos_seed16; hashing covers every byte.
+    salt_len = min(64, len(ct_bytes))
+    uv_bytes = ct_bytes[:-salt_len]
+    salt = ct_bytes[-salt_len:]
+    split = len(uv_bytes) // 2
+    u_bytes = uv_bytes[:split]
+    v_bytes = uv_bytes[split:]
+    shared_seed16 = derive_shared_chaos_seed16(
+        pk_bytes, salt, u_bytes, v_bytes
+    )
+    chaos_kdf = shake_whiten_chaos(shared_seed16, 32, CHAOS_DOMAIN)
+    return _kdf_mix_len(
+        base_ss, chaos_kdf, u_bytes + v_bytes, int(out_len)
+    )
+
+
+def _percentile_linear(values, q):
+    values = sorted(float(x) for x in values)
+    if not values:
+        return 0.0
+    if len(values) == 1:
+        return values[0]
+    pos = float(q) * float(len(values) - 1)
+    lo = int(math.floor(pos))
+    hi = int(math.ceil(pos))
+    if lo == hi:
+        return values[lo]
+    frac = pos - float(lo)
+    return values[lo] * (1.0 - frac) + values[hi] * frac
+
+
+def _sample_summary_us(samples):
+    vals = [float(x) for x in samples]
+    if not vals:
+        return {"n": 0, "median_us": 0.0, "mean_us": 0.0,
+                "std_us": 0.0, "p05_us": 0.0, "p95_us": 0.0}
+    mean = sum(vals) / float(len(vals))
+    if len(vals) > 1:
+        var = sum((x - mean) ** 2 for x in vals) / float(len(vals) - 1)
+    else:
+        var = 0.0
+    return {
+        "n": int(len(vals)),
+        "median_us": float(_percentile_linear(vals, 0.50)),
+        "mean_us": float(mean),
+        "std_us": float(math.sqrt(var)),
+        "p05_us": float(_percentile_linear(vals, 0.05)),
+        "p95_us": float(_percentile_linear(vals, 0.95)),
+    }
+
+
+def _bootstrap_median_ci(values, confidence=0.95, resamples=2000, seed=20261018):
+    """Deterministic percentile-bootstrap CI for the paired median."""
+    vals = [float(x) for x in values]
+    if not vals:
+        return 0.0, 0.0
+    rng = random.Random(int(seed))
+    n = len(vals)
+    medians = []
+    for _ in range(int(resamples)):
+        draw = [vals[rng.randrange(n)] for _j in range(n)]
+        medians.append(_percentile_linear(draw, 0.50))
+    alpha = (1.0 - float(confidence)) / 2.0
+    return (_percentile_linear(medians, alpha),
+            _percentile_linear(medians, 1.0 - alpha))
+
+
+def _balanced_paired_timings(call_a, call_b, warmup=50, repeat=500):
+    """AB/BA-balanced paired timings in microseconds with GC disabled."""
+    warmup = int(warmup)
+    repeat = int(repeat)
+    for i in range(warmup):
+        if i % 2 == 0:
+            call_a(); call_b()
+        else:
+            call_b(); call_a()
+
+    times_a = []
+    times_b = []
+    gc.collect()
+    gc.disable()
+    try:
+        for i in range(repeat):
+            if i % 2 == 0:
+                t0 = time.perf_counter(); call_a(); t1 = time.perf_counter()
+                t2 = time.perf_counter(); call_b(); t3 = time.perf_counter()
+                times_a.append((t1 - t0) * 1.0e6)
+                times_b.append((t3 - t2) * 1.0e6)
+            else:
+                t0 = time.perf_counter(); call_b(); t1 = time.perf_counter()
+                t2 = time.perf_counter(); call_a(); t3 = time.perf_counter()
+                times_b.append((t1 - t0) * 1.0e6)
+                times_a.append((t3 - t2) * 1.0e6)
+    finally:
+        gc.enable()
+    return times_a, times_b
+
+
+def _peak_incremental_bytes(callable_obj, repeat=25):
+    """Peak Python allocation observed while repeatedly calling one operation."""
+    # Python 3.7 (bundled with SageMath 9.3) predates reset_peak().  Starting a
+    # fresh tracing session gives an equivalent clean peak measurement.
+    if tracemalloc.is_tracing():
+        tracemalloc.stop()
+    tracemalloc.start()
+    before_current, _ = tracemalloc.get_traced_memory()
+    for _ in range(int(repeat)):
+        callable_obj()
+    _after_current, peak = tracemalloc.get_traced_memory()
+    tracemalloc.stop()
+    return int(max(0, peak - before_current))
+
+
+def _write_csv_rows(path, rows):
+    if not rows:
+        return
+    fieldnames = []
+    for row in rows:
+        for key in row.keys():
+            if key not in fieldnames:
+                fieldnames.append(key)
+    with open(path, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        for row in rows:
+            writer.writerow(row)
+
+
+def _json_numeric_default(obj):
+    """Convert Sage/NumPy scalar types at the serialization boundary."""
+    type_name = type(obj).__name__
+    if type_name in ("Integer", "int8", "int16", "int32", "int64",
+                     "uint8", "uint16", "uint32", "uint64"):
+        return int(obj)
+    if type_name in ("RealNumber", "RealDoubleElement", "float16",
+                     "float32", "float64"):
+        return float(obj)
+    raise TypeError("Object of type %s is not JSON serializable" % type_name)
+
+
+def benchmark_standard_size_enhancement(
+        warmup=50, repeat=500, bootstrap_resamples=2000,
+        output_dir="results/standard_size_engineering"):
+    """
+    Benchmark only the proposed enhancement modules at NIST-reported HQC
+    transcript sizes.  This does not benchmark standardized HQC itself.
+    Input generation and allocation are excluded from timed regions.
+    """
+    warmup = int(warmup)
+    repeat = int(repeat)
+    bootstrap_resamples = int(bootstrap_resamples)
+    output_dir = str(output_dir)
+    os.makedirs(output_dir, exist_ok=True)
+    rows = []
+
+    for profile_index, profile in enumerate(HQC_STANDARD_SIZE_PROFILES):
+        name = profile["name"]
+        entropy_material_bytes = {1: 32, 3: 48, 5: 64}[
+            int(profile["nist_level"])
+        ]
+        pk = _shake_bytes((name + ":pk").encode("ascii"),
+                          profile["public_key_bytes"])
+        ct = _shake_bytes((name + ":ct").encode("ascii"),
+                          profile["ciphertext_bytes"])
+        base_ss = _shake_bytes((name + ":base-ss").encode("ascii"),
+                               profile["shared_secret_bytes"])
+        transcript = pk + ct
+
+        primary = _shake_bytes((name + ":primary").encode("ascii"),
+                               entropy_material_bytes)
+        auxiliary_seed = _shake_bytes(
+            (name + ":auxiliary").encode("ascii"), 16
+        )
+        entropy_label = (name + ":entropy-draw").encode("ascii")
+
+        call_entropy_baseline = lambda: _baseline_entropy_expand(
+            entropy_label, primary, entropy_material_bytes
+        )
+        call_entropy_enhanced = lambda: mix_urandom_with_chaos(
+            entropy_label, primary, auxiliary_seed, entropy_material_bytes
+        )
+        entropy_baseline_times, entropy_enhanced_times = _balanced_paired_timings(
+            call_entropy_baseline, call_entropy_enhanced,
+            warmup=warmup, repeat=repeat
+        )
+        entropy_delta = [
+            entropy_enhanced_times[i] - entropy_baseline_times[i]
+            for i in range(len(entropy_baseline_times))
+        ]
+        ebsum = _sample_summary_us(entropy_baseline_times)
+        eesum = _sample_summary_us(entropy_enhanced_times)
+        edsum = _sample_summary_us(entropy_delta)
+        eci_lo, eci_hi = _bootstrap_median_ci(
+            entropy_delta, resamples=bootstrap_resamples,
+            seed=20260918 + profile_index
+        )
+        entropy_baseline_peak = _peak_incremental_bytes(call_entropy_baseline)
+        entropy_enhanced_peak = _peak_incremental_bytes(call_entropy_enhanced)
+
+        for operation, summary, peak in (
+                ("baseline_entropy_expand", ebsum, entropy_baseline_peak),
+                ("enhanced_entropy_diversification", eesum, entropy_enhanced_peak)):
+            row = {
+                "profile": name,
+                "nist_level": int(profile["nist_level"]),
+                "entropy_material_bytes": int(entropy_material_bytes),
+                "operation": operation,
+                "peak_incremental_bytes": peak,
+            }
+            row.update(summary)
+            rows.append(row)
+
+        entropy_overhead_pct = ((eesum["median_us"] - ebsum["median_us"])
+                                / ebsum["median_us"] * 100.0)
+        rows.append({
+            "profile": name,
+            "nist_level": int(profile["nist_level"]),
+            "entropy_material_bytes": int(entropy_material_bytes),
+            "operation": "paired_entropy_overhead",
+            "n": repeat,
+            "median_us": edsum["median_us"],
+            "mean_us": edsum["mean_us"],
+            "std_us": edsum["std_us"],
+            "p05_us": edsum["p05_us"],
+            "p95_us": edsum["p95_us"],
+            "median_overhead_pct": entropy_overhead_pct,
+            "median_ci95_low_us": eci_lo,
+            "median_ci95_high_us": eci_hi,
+            "peak_incremental_bytes": entropy_enhanced_peak - entropy_baseline_peak,
+        })
+
+        call_baseline = lambda: _baseline_transcript_kdf(
+            base_ss, transcript, profile["shared_secret_bytes"]
+        )
+        call_enhanced = lambda: _enhanced_transcript_kdf(
+            pk, ct, base_ss, profile["shared_secret_bytes"]
+        )
+
+        baseline_times, enhanced_times = _balanced_paired_timings(
+            call_baseline, call_enhanced, warmup=warmup, repeat=repeat
+        )
+        paired_delta = [enhanced_times[i] - baseline_times[i]
+                        for i in range(len(baseline_times))]
+        bsum = _sample_summary_us(baseline_times)
+        esum = _sample_summary_us(enhanced_times)
+        dsum = _sample_summary_us(paired_delta)
+        ci_lo, ci_hi = _bootstrap_median_ci(
+            paired_delta, resamples=bootstrap_resamples,
+            seed=20261018 + profile_index
+        )
+
+        baseline_peak = _peak_incremental_bytes(call_baseline)
+        enhanced_peak = _peak_incremental_bytes(call_enhanced)
+
+        for operation, summary, peak in (
+                ("baseline_transcript_kdf", bsum, baseline_peak),
+                ("enhanced_context_binding", esum, enhanced_peak)):
+            row = {
+                "profile": name,
+                "nist_level": int(profile["nist_level"]),
+                "public_key_bytes": int(profile["public_key_bytes"]),
+                "ciphertext_bytes": int(profile["ciphertext_bytes"]),
+                "transcript_bytes": len(transcript),
+                "shared_secret_bytes": int(profile["shared_secret_bytes"]),
+                "operation": operation,
+                "peak_incremental_bytes": peak,
+            }
+            row.update(summary)
+            rows.append(row)
+
+        overhead_pct = ((esum["median_us"] - bsum["median_us"])
+                        / bsum["median_us"] * 100.0)
+        rows.append({
+            "profile": name,
+            "nist_level": int(profile["nist_level"]),
+            "public_key_bytes": int(profile["public_key_bytes"]),
+            "ciphertext_bytes": int(profile["ciphertext_bytes"]),
+            "transcript_bytes": len(transcript),
+            "shared_secret_bytes": int(profile["shared_secret_bytes"]),
+            "operation": "paired_overhead",
+            "n": repeat,
+            "median_us": dsum["median_us"],
+            "mean_us": dsum["mean_us"],
+            "std_us": dsum["std_us"],
+            "p05_us": dsum["p05_us"],
+            "p95_us": dsum["p95_us"],
+            "median_overhead_pct": overhead_pct,
+            "median_ci95_low_us": ci_lo,
+            "median_ci95_high_us": ci_hi,
+            "peak_incremental_bytes": enhanced_peak - baseline_peak,
+        })
+
+        print("[%s] transcript=%d B, baseline=%.2f us, enhanced=%.2f us, "
+              "paired overhead=%.2f us (95%% bootstrap CI %.2f..%.2f us)"
+              % (name, len(transcript), bsum["median_us"], esum["median_us"],
+                 dsum["median_us"], ci_lo, ci_hi), flush=True)
+        print("[%s] entropy draw=%d B, baseline=%.2f us, enhanced=%.2f us, "
+              "paired overhead=%.2f us (95%% bootstrap CI %.2f..%.2f us)"
+              % (name, entropy_material_bytes, ebsum["median_us"],
+                 eesum["median_us"], edsum["median_us"], eci_lo, eci_hi),
+              flush=True)
+
+    csv_path = os.path.join(output_dir, "standard_size_microbenchmark.csv")
+    json_path = os.path.join(output_dir, "standard_size_microbenchmark.json")
+    mat_path = os.path.join(output_dir, "standard_size_microbenchmark.mat")
+    _write_csv_rows(csv_path, rows)
+
+    metadata = {
+        "experiment": "enhancement-layer microbenchmark at standardized HQC transcript sizes",
+        "scope_warning": "Not a benchmark or conformance test of standardized HQC implementations.",
+        "size_source": "NIST IR 8545 (March 2025)",
+        "warmup": int(warmup),
+        "repeat": int(repeat),
+        "bootstrap_resamples": int(bootstrap_resamples),
+        "timer": "time.perf_counter",
+        "pairing": "alternating AB/BA; input preparation excluded",
+        "python": sys.version,
+        "platform": platform.platform(),
+        "rows": rows,
+    }
+    with open(json_path, "w") as f:
+        json.dump(metadata, f, indent=2, sort_keys=True,
+                  default=_json_numeric_default)
+
+    paired_rows = [r for r in rows if r["operation"] == "paired_overhead"]
+    entropy_paired_rows = [
+        r for r in rows if r["operation"] == "paired_entropy_overhead"
+    ]
+    savemat(mat_path, {
+        "profile": np.array([r["profile"] for r in paired_rows], dtype="U16"),
+        "transcript_bytes": np.array([r["transcript_bytes"] for r in paired_rows]),
+        "median_overhead_us": np.array([r["median_us"] for r in paired_rows]),
+        "mean_overhead_us": np.array([r["mean_us"] for r in paired_rows]),
+        "ci95_low_us": np.array([r["median_ci95_low_us"] for r in paired_rows]),
+        "ci95_high_us": np.array([r["median_ci95_high_us"] for r in paired_rows]),
+        "median_overhead_pct": np.array([r["median_overhead_pct"] for r in paired_rows]),
+        "peak_incremental_bytes": np.array([r["peak_incremental_bytes"] for r in paired_rows]),
+        "entropy_material_bytes": np.array([r["entropy_material_bytes"] for r in entropy_paired_rows]),
+        "entropy_median_overhead_us": np.array([r["median_us"] for r in entropy_paired_rows]),
+        "entropy_ci95_low_us": np.array([r["median_ci95_low_us"] for r in entropy_paired_rows]),
+        "entropy_ci95_high_us": np.array([r["median_ci95_high_us"] for r in entropy_paired_rows]),
+        "entropy_peak_incremental_bytes": np.array([r["peak_incremental_bytes"] for r in entropy_paired_rows]),
+    })
+    return rows
+
+
+def run_standard_size_context_binding(
+        num_trials=500, bootstrap_resamples=2000,
+        output_dir="results/standard_size_engineering"):
+    """
+    Flip one public-transcript bit and measure the final-key Hamming response at
+    each NIST-reported HQC transcript size.  This tests only context binding.
+    """
+    num_trials = int(num_trials)
+    bootstrap_resamples = int(bootstrap_resamples)
+    output_dir = str(output_dir)
+    os.makedirs(output_dir, exist_ok=True)
+    rng = random.Random(20261018)
+    rows = []
+
+    for profile_index, profile in enumerate(HQC_STANDARD_SIZE_PROFILES):
+        name = profile["name"]
+        pk0 = _shake_bytes((name + ":binding-pk").encode("ascii"),
+                           profile["public_key_bytes"])
+        ct0 = _shake_bytes((name + ":binding-ct").encode("ascii"),
+                           profile["ciphertext_bytes"])
+        base_ss = _shake_bytes((name + ":binding-ss").encode("ascii"),
+                               profile["shared_secret_bytes"])
+        reference = _enhanced_transcript_kdf(
+            pk0, ct0, base_ss, profile["shared_secret_bytes"]
+        )
+
+        for component in ("public_key", "ciphertext"):
+            rates = []
+            changed_count = 0
+            source = pk0 if component == "public_key" else ct0
+            for _ in range(num_trials):
+                bit_pos = rng.randrange(len(source) * 8)
+                changed = bytearray(source)
+                changed[bit_pos // 8] = operator.xor(
+                    int(changed[bit_pos // 8]), int(1 << (bit_pos % 8))
+                )
+                if component == "public_key":
+                    candidate = _enhanced_transcript_kdf(
+                        bytes(changed), ct0, base_ss,
+                        profile["shared_secret_bytes"]
+                    )
+                else:
+                    candidate = _enhanced_transcript_kdf(
+                        pk0, bytes(changed), base_ss,
+                        profile["shared_secret_bytes"]
+                    )
+                if candidate != reference:
+                    changed_count += 1
+                rates.append(_bcr_percent(candidate, reference))
+
+            summary = _sample_summary_us(rates)
+            ci_lo, ci_hi = _bootstrap_median_ci(
+                rates, resamples=bootstrap_resamples,
+                seed=20261118 + profile_index + (0 if component == "public_key" else 100)
+            )
+            row = {
+                "profile": name,
+                "nist_level": int(profile["nist_level"]),
+                "component": component,
+                "num_trials": num_trials,
+                "changed_outputs": changed_count,
+                "changed_rate_pct": float(changed_count) / float(num_trials) * 100.0,
+                "bcr_median_pct": summary["median_us"],
+                "bcr_mean_pct": summary["mean_us"],
+                "bcr_std_pct": summary["std_us"],
+                "bcr_p05_pct": summary["p05_us"],
+                "bcr_p95_pct": summary["p95_us"],
+                "bcr_median_ci95_low_pct": ci_lo,
+                "bcr_median_ci95_high_pct": ci_hi,
+            }
+            rows.append(row)
+            print("[%s/%s] changed=%.2f%%, BCR mean=%.2f%%, median=%.2f%%"
+                  % (name, component, row["changed_rate_pct"],
+                     row["bcr_mean_pct"], row["bcr_median_pct"]), flush=True)
+
+    csv_path = os.path.join(output_dir, "standard_size_context_binding.csv")
+    json_path = os.path.join(output_dir, "standard_size_context_binding.json")
+    mat_path = os.path.join(output_dir, "standard_size_context_binding.mat")
+    _write_csv_rows(csv_path, rows)
+    with open(json_path, "w") as f:
+        json.dump({
+            "experiment": "one-bit public-transcript context-binding response",
+            "scope_warning": "This isolates the binding layer; it is not a standardized HQC KEM test.",
+            "size_source": "NIST IR 8545 (March 2025)",
+            "num_trials_per_component": num_trials,
+            "bootstrap_resamples": int(bootstrap_resamples),
+            "rows": rows,
+        }, f, indent=2, sort_keys=True, default=_json_numeric_default)
+    savemat(mat_path, {
+        "profile": np.array([r["profile"] for r in rows], dtype="U16"),
+        "component": np.array([r["component"] for r in rows], dtype="U16"),
+        "changed_rate_pct": np.array([r["changed_rate_pct"] for r in rows]),
+        "bcr_mean_pct": np.array([r["bcr_mean_pct"] for r in rows]),
+        "bcr_std_pct": np.array([r["bcr_std_pct"] for r in rows]),
+        "bcr_median_pct": np.array([r["bcr_median_pct"] for r in rows]),
+        "bcr_median_ci95_low_pct": np.array([r["bcr_median_ci95_low_pct"] for r in rows]),
+        "bcr_median_ci95_high_pct": np.array([r["bcr_median_ci95_high_pct"] for r in rows]),
+    })
+    return rows

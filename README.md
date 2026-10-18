@@ -81,6 +81,7 @@ sage experiments/plaintext_avalanche_test.sage
 sage experiments/entropy_degradation_test.sage
 sage experiments/tampering_test.sage
 sage experiments/performance_test.sage
+sage experiments/standard_size_engineering_test.sage
 ```
 
 Experiments that emit MATLAB files change their working directory to `matlab/`, matching the file names consumed by the post-processing scripts.
@@ -118,6 +119,15 @@ The scripts write figures into the current MATLAB directory or into script-speci
 | Section 4.4 | Entropy-source degradation | `experiments/entropy_degradation_test.sage`, `matlab/entropy_robustness.m` |
 | Section 4.5 | Ciphertext tampering | `experiments/tampering_test.sage`, `matlab/plot_hqc_integrity_compare.m` |
 | Section 4.7 | Relative performance | `experiments/performance_test.sage` |
+| Engineering supplement | Standard-size transcript microbenchmark and context binding | `experiments/standard_size_engineering_test.sage` |
+
+The engineering supplement sizes synthetic public-key and ciphertext byte
+strings according to the HQC profiles reported in NIST IR 8545, then exercises
+only this repository's entropy-diversification and context-binding modules.  It
+does not execute, benchmark, or claim conformance with standardized HQC.  The
+script writes CSV, JSON, and MAT outputs under
+`results/standard_size_engineering/`; see
+[`docs/standard_size_engineering.md`](docs/standard_size_engineering.md).
 
 ## Reproducibility Notes
 

@@ -16,6 +16,10 @@
 - `autocorr_mixed_only.mat` is written by `generate_and_analyze_autocorr()`.
 - `plaintext_avalanche.mat` is written by `run_plaintext_avalanche()`.
 - `ciphertext_integrity_uv.mat` is written by `test_ciphertext_integrity_uv()`.
+- `results/standard_size_engineering/standard_size_microbenchmark.*` is written
+  by `benchmark_standard_size_enhancement()`.
+- `results/standard_size_engineering/standard_size_context_binding.*` is written
+  by `run_standard_size_context_binding()`.
 - `hqc_original.mat` and the four `y_*_original.mat` files are the SageMath-generated baseline counterparts. Their baseline KEM implementation is retained as `crypto_kem_keypair_orig()`, `crypto_kem_enc_orig()`, and `crypto_kem_dec_orig()`, and their field layouts match the corresponding enhanced experiment outputs.
 
 ## Known limitations
@@ -25,5 +29,9 @@
 3. SageMath 9.3 is not available on the ordinary Windows `PATH`, but the existing bundled SageMath Shell successfully loaded `src/hqc_prototype.sage` and ran `experiments/core_smoke_test.sage`. The RM, RS, concatenated-code, PKE, and KEM checks completed with `OK` results.
 4. MATLAB R2024b successfully executed `entropy_results.m` with the supplied data. All seven selected MATLAB scripts also passed `checkcode` without syntax errors; the remaining messages were non-fatal performance or export-option recommendations.
 5. Randomized experiments use operating-system randomness. Exact samples are therefore not expected to repeat without introducing a deterministic test seed, which would change the experiment setup and has not been done.
+6. The standard-size engineering supplement uses deterministic synthetic byte
+   strings whose lengths match the HQC profiles reported in NIST IR 8545. It
+   isolates the proposed enhancement layer and is not a standardized-HQC
+   implementation, conformance test, or whole-KEM performance benchmark.
 
 These limitations do not authorize changing the algorithms, parameters, formulas, experiment logic, or manuscript data.
