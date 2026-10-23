@@ -1,0 +1,19 @@
+{
+  "replicates_per_group": 100,
+  "bytes_per_replicate": 1000000,
+  "original": {
+    "mean": 7.999816850378214,
+    "median": 7.999817777385212,
+    "sample_sd": 1.8502379871139044e-05,
+    "min": 7.999765500310079,
+    "max": 7.999859887334773
+  },
+  "enhanced": {
+    "mean": 7.999816122473922,
+    "median": 7.999813086226752,
+    "sample_sd": 1.7476135396938402e-05,
+    "min": 7.999764572316456,
+    "max": 7.999858164739293
+  },
+  "inference": "Descriptive only; no significance test was performed."
+}

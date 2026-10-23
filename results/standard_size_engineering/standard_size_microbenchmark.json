@@ -1,6 +1,6 @@
 {
   "bootstrap_resamples": 2000,
-  "experiment": "enhancement-layer microbenchmark at standardized HQC transcript sizes",
+  "experiment": "enhancement-layer microbenchmark at NIST-reported HQC transcript sizes",
   "pairing": "alternating AB/BA; input preparation excluded",
   "platform": "CYGWIN_NT-10.0-26200-3.2.0-340.x86_64-x86_64-64bit-WindowsPE",
   "python": "3.7.10 (default, May  5 2021, 11:43:58) \n[GCC 10.2.0]",
@@ -286,7 +286,7 @@
       "transcript_bytes": 21730
     }
   ],
-  "scope_warning": "Not a benchmark or conformance test of standardized HQC implementations.",
+  "scope_warning": "Not a benchmark or conformance test of complete HQC implementations.",
   "size_source": "NIST IR 8545 (March 2025)",
   "timer": "time.perf_counter",
   "warmup": 50

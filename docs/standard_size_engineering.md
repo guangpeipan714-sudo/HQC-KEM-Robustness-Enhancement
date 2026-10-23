@@ -3,7 +3,7 @@
 ## Purpose
 
 This supplement adds engineering evidence without representing the
-reduced-scale SageMath prototype as a standardized HQC implementation. It asks
+reduced-scale SageMath prototype as a complete HQC implementation. It asks
 two narrow questions:
 
 1. How much absolute time and incremental Python allocation does the proposed
@@ -26,7 +26,7 @@ The byte lengths are taken from NIST IR 8545 (March 2025):
 
 Only byte-string lengths are imported from the standardization report. The
 bytes themselves are deterministic SHAKE256-generated benchmark inputs. The
-experiment does not run standardized HQC key generation, encapsulation, or
+experiment does not run HQC key generation, encapsulation, or
 decapsulation and must not be cited as a whole-KEM benchmark.
 
 Source: NIST IR 8545, *Status Report on the Fourth Round of the NIST
@@ -57,7 +57,7 @@ The entropy-module comparison separately measures a single 32-, 48-, or
 the primary input using SHAKE256, whereas the enhanced path adds the independent
 16-byte auxiliary seed, Q64 transformation, and domain-separated SHAKE256
 aggregation. These are component microbenchmarks rather than counts of random
-draws made by a standardized HQC implementation.
+draws made by a complete HQC implementation.
 
 ## Context-binding design
 

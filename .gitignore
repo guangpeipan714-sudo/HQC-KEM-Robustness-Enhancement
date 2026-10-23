@@ -242,3 +242,9 @@ Autocorrelation_Comparison.tif
 Entropy_Comparison_Plot.tif
 fig_entropy_robustness.tif
 fig_entropy_robustness_bar.tif
+
+# Generated publication figures (source data and QA records remain tracked)
+results/shannon_entropy/*.pdf
+results/shannon_entropy/*.png
+results/shannon_entropy/*.svg
+results/shannon_entropy/*.tiff

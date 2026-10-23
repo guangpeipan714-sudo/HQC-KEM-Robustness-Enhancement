@@ -2,11 +2,13 @@
 
 This repository contains the SageMath implementation and experimental scripts associated with the paper on robustness-enhanced HQC-KEM using multi-source entropy integration, Q64 fixed-point Logistic transformation, and transcript-bound key derivation.
 
+The current archival release is **v1.2.0**. It repairs the executable Q64-recurrence path and the Fig. 6 Shannon-entropy regeneration workflow without changing the prototype parameters or the manuscript's reported experimental conclusions. See [`RELEASE_NOTES_v1.2.0.md`](RELEASE_NOTES_v1.2.0.md).
+
 ## Overview
 
 The repository provides a reduced-scale SageMath prototype for studying randomness-source degradation, deterministic Q64 Logistic transformation, multi-source entropy integration, and transcript-bound key derivation in an HQC-like KEM workflow.
 
-This is a reduced-scale SageMath prototype. It is intended for mechanism validation, statistical evaluation, and relative performance comparison. It is not a standards-compliant or production-grade HQC implementation. The prototype parameters do not correspond to the standardized HQC-1, HQC-3, or HQC-5 parameter sets.
+This is a reduced-scale SageMath prototype. It is intended for mechanism validation, statistical evaluation, and relative performance comparison. It is not a standards-compliant or production-grade HQC implementation. The prototype parameters do not correspond to the NIST-reported HQC-128, HQC-192, or HQC-256 parameter profiles.
 
 The Logistic map is a deterministic nonlinear transformation and is not treated as an independent entropy source. Entropy robustness depends on an independent auxiliary entropy source. SHAKE256 performs the cryptographic mixing and whitening. The code is research software and must not be used to protect production data.
 
@@ -79,6 +81,7 @@ sage experiments/logistic_sensitivity_test.sage
 sage experiments/key_sensitivity_test.sage
 sage experiments/plaintext_avalanche_test.sage
 sage experiments/entropy_degradation_test.sage
+sage experiments/shannon_entropy_test.sage
 sage experiments/tampering_test.sage
 sage experiments/performance_test.sage
 sage experiments/standard_size_engineering_test.sage
@@ -86,7 +89,13 @@ sage experiments/standard_size_engineering_test.sage
 
 Experiments that emit MATLAB files change their working directory to `matlab/`, matching the file names consumed by the post-processing scripts.
 
-The original `generate_proposed_hqc_data()` function is retained in `src/hqc_prototype.sage`, but it still contains the author-supplied `os.urandom(...)` placeholder instead of the proposed mixing call. It is therefore not exposed as a validated experiment entry point. The supplied Shannon-entropy `.mat` files can be plotted, but regeneration of those data requires author confirmation of the intended experiment logic. See [`docs/reproducibility.md`](docs/reproducibility.md).
+`experiments/shannon_entropy_test.sage` regenerates both Fig. 6 data paths at the manuscript scale (100 independent 1,000,000-byte outputs per construction). The baseline is domain-separated SHAKE256 expansion of the 32-byte primary input; the enhanced path calls `mix_urandom_with_chaos()` with the same primary input and an independently sampled 16-byte auxiliary seed. It writes the two `.mat` files and `shannon_entropy_source_data.csv` under `matlab/`.
+
+Render the corresponding publication figure with a Python environment containing NumPy and Matplotlib:
+
+```bash
+python experiments/plot_shannon_entropy.py --data-dir matlab --output-dir results/shannon_entropy
+```
 
 ## MATLAB Post-processing
 
@@ -111,7 +120,7 @@ The scripts write figures into the current MATLAB directory or into script-speci
 | Paper Section | Experiment | Script |
 | --- | --- | --- |
 | Section 4.2 | Bit-frequency test | `experiments/randomness_test.sage` |
-| Section 4.2 | Shannon-entropy visualization from supplied data | `matlab/entropy_results.m` |
+| Section 4.2 | Shannon-entropy data and visualization | `experiments/shannon_entropy_test.sage`, `experiments/plot_shannon_entropy.py` |
 | Section 4.2 | Autocorrelation | `experiments/autocorrelation_test.sage`, `matlab/autocorr_results.m` |
 | Section 4.3 | Logistic-branch sensitivity | `experiments/logistic_sensitivity_test.sage`, `matlab/logistic_sensitivity.m` |
 | Section 4.3 | Key sensitivity | `experiments/key_sensitivity_test.sage`, `matlab/key_sensitivity.m` |
@@ -124,7 +133,7 @@ The scripts write figures into the current MATLAB directory or into script-speci
 The engineering supplement sizes synthetic public-key and ciphertext byte
 strings according to the HQC profiles reported in NIST IR 8545, then exercises
 only this repository's entropy-diversification and context-binding modules.  It
-does not execute, benchmark, or claim conformance with standardized HQC.  The
+does not execute, benchmark, or claim conformance with a complete HQC implementation.  The
 script writes CSV, JSON, and MAT outputs under
 `results/standard_size_engineering/`; see
 [`docs/standard_size_engineering.md`](docs/standard_size_engineering.md).
@@ -134,14 +143,14 @@ script writes CSV, JSON, and MAT outputs under
 - Randomized experiments use operating-system randomness and will not reproduce identical samples across runs.
 - Fixed Q64 arithmetic gives deterministic Logistic evolution for identical seeds, encodings, and integer semantics.
 - Statistical observations do not constitute a cryptographic security proof.
-- The included `.mat` files are author-supplied outputs generated by the SageMath experiment code and consumed by the selected MATLAB scripts.
+- The included `.mat` files are outputs generated by the SageMath experiment code and consumed by the selected plotting scripts.
 - The original-HQC comparison datasets correspond to the baseline HQC implementation and the same statistical procedures in `src/hqc_prototype.sage`. The final saved notebook does not retain every standalone invocation under the exact `y_*_original.mat` output name, so the supplied baseline outputs are preserved unchanged.
-- The Shannon-entropy data-generation placeholder described above prevents a validated end-to-end regeneration of that specific dataset.
-- Performance values are specific to the reduced-scale Python/SageMath prototype and must not be extrapolated to standardized HQC implementations.
+- The Fig. 6 Shannon-entropy files were regenerated from the repaired baseline and enhanced code paths; the randomized samples are not expected to be bit-identical across reruns.
+- Performance values are specific to the reduced-scale Python/SageMath prototype and must not be extrapolated to complete HQC implementations.
 
 ## Security Disclaimer
 
-This repository is for research and reproducibility only. It has not undergone production security review, constant-time validation, side-channel analysis, or conformance testing. It does not implement a standardized HQC parameter set. The Logistic layer introduces no new cryptographic hardness assumption and must not be treated as a cryptographically secure pseudorandom-number generator or an entropy source. Security of standardized HQC derives from its code-based assumptions and the applicable official construction, not from this prototype.
+This repository is for research and reproducibility only. It has not undergone production security review, constant-time validation, side-channel analysis, or conformance testing. It does not implement a NIST-reported HQC parameter profile. The Logistic layer introduces no new cryptographic hardness assumption and must not be treated as a cryptographically secure pseudorandom-number generator or an entropy source. Security of HQC derives from its code-based assumptions and the applicable official construction, not from this prototype.
 
 ## Citation
 
@@ -150,7 +159,7 @@ If this repository supports published work, cite the associated paper:
 ```bibtex
 @unpublished{cui2026hqcrobustness,
   author = {Zhiyong Cui and Guangpei Pan and Jun Zhang and Jinwei Luo and Zhen Wu},
-  title  = {Multi-Source Entropy Enhancement and Context Binding for Post-Quantum HQC-KEM under Randomness-Source Degradation},
+  title  = {Multi-Source Entropy Robustness and Context Binding for the Post-Quantum HQC-KEM},
   year   = {2026},
   note   = {Manuscript submitted for publication}
 }

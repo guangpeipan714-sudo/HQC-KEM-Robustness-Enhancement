@@ -128,9 +128,17 @@ SPAN_Q64  = (1 << 64) // 10          # floor(0.1 * 2^64)，区间 [3.9,4) 的宽
 
 def logistic_chaos_bytes(seed16, out_len, burn_in=64):
     """
-    数字 Logistic 混沌：x_{n+1} = r*x_n*(1-x_n) in Q64
-    控制参数 r 由种子高 8 字节映射到深度混沌区间 [3.9, 4)。
-    注意：不能替代 CSPRNG；这里只作为“加料”，并会被 SHAKE 白化。
+    Q64 fixed-point Logistic-style recurrence used by the prototype.
+
+    With Q = 2^64 and M = Q - 1, each step is evaluated in two
+    separately truncated stages:
+
+        t_n       = floor(x_n * (M - x_n) / Q)
+        x_{n + 1} = floor(r_Q * t_n / Q) mod Q
+
+    The two divisions by Q are the two right shifts below. This finite-state
+    deterministic transform is not an entropy source or a CSPRNG; SHAKE256
+    performs the subsequent whitening and mixing.
     """
     assert len(seed16) == 16
     out_len = int(out_len)
@@ -923,37 +931,43 @@ def calculate_information_entropy(byte_data):
 def generate_proposed_hqc_data():
     num_experiments = 100         
     sample_size_bytes = 1000000   
+    entropy_original = []
     entropy_proposed = []
 
-    print(f"开始收集【融合混沌HQC】的 {num_experiments} 组信息熵数据...")
+    print(f"开始收集 {num_experiments} 组基线与融合方案信息熵数据...")
     
     for i in range(num_experiments):
         label = b"TEST:entropy_analysis"
         urnd_bytes = os.urandom(32)
         chaos_seed16 = os.urandom(16)
         
-        # =========================================================
-        # 【修改这里】：调用你自己的方式一混沌混合函数
-        # =========================================================
-        # proposed_bytes = mix_urandom_with_chaos(
-        #     label_bytes=label, 
-        #     urnd_bytes=urnd_bytes, 
-        #     chaos_seed16=chaos_seed16, 
-        #     out_len=sample_size_bytes
-        # )
-        
-        proposed_bytes = os.urandom(sample_size_bytes) # <- 务必替换掉这个占位符！
-        
-        ent = calculate_information_entropy(proposed_bytes)
-        entropy_proposed.append(ent)
+        original_bytes = _baseline_entropy_expand(
+            label, urnd_bytes, sample_size_bytes)
+        proposed_bytes = mix_urandom_with_chaos(
+            label_bytes=label,
+            urnd_bytes=urnd_bytes,
+            chaos_seed16=chaos_seed16,
+            out_len=sample_size_bytes)
+
+        entropy_original.append(calculate_information_entropy(original_bytes))
+        entropy_proposed.append(calculate_information_entropy(proposed_bytes))
         
         if (i + 1) % 10 == 0:
-            print(f"融合方案进度已完成 {i + 1} / {num_experiments} ...")
+            print(f"信息熵实验进度已完成 {i + 1} / {num_experiments} ...")
 
-    # 导出为 .mat 文件
-    mat_data = {'Entropy_Proposed': entropy_proposed}
-    sio.savemat('hqc_proposed.mat', mat_data)
-    print("\n✅ 融合方案数据已成功保存至: hqc_proposed.mat")
+    sio.savemat('hqc_original.mat', {'Entropy_Original': entropy_original})
+    sio.savemat('hqc_proposed.mat', {'Entropy_Proposed': entropy_proposed})
+    with open('shannon_entropy_source_data.csv', 'w', newline='') as handle:
+        writer = csv.writer(handle)
+        writer.writerow(['replicate', 'original_hqc', 'enhanced_hqc'])
+        for index, (original_value, proposed_value) in enumerate(
+                zip(entropy_original, entropy_proposed), start=1):
+            writer.writerow([index, original_value, proposed_value])
+    print("\n基线与融合方案数据已保存为 MAT 和 CSV 文件")
+    return {
+        'Entropy_Original': entropy_original,
+        'Entropy_Proposed': entropy_proposed,
+    }
 
 
 
@@ -962,53 +976,6 @@ def generate_proposed_hqc_data():
 
 
 # 混沌系统的初值敏感性分析
-
-def logistic_chaos_bytes(seed16, out_len, burn_in=64):
-    """
-    64位定点(Q64) Logistic 混沌：x_{n+1} = r*x_n*(1-x_n)
-    - 跨平台逐位可复现（整数运算）
-    - r 限制在深度混沌区 [3.9, 4.0)，避免周期窗口
-    仅作加料，后续由 SHAKE256 白化。
-    """
-    assert len(seed16) == 16
-    out_len = int(out_len)
-    burn_in = int(burn_in)
-
-    MASK = (1 << 64) - 1
-    s0 = _u64_le(seed16[:8])
-    s1 = _u64_le(seed16[8:])
-
-    # 初值 x0 ∈ (0,1)，避开 0/1 不动点
-    x = s0 & MASK
-    if x < (1 << 32):
-        x ^= 0x9E3779B97F4A7C15
-    x &= MASK
-
-    # r ∈ [3.9, 4.0)，始终处于深度混沌区（关键修正）
-    R_BASE  = int(3.9 * (1 << 64))
-    R_WIDTH = int(0.1 * (1 << 64))
-    r = R_BASE + ((s1 * R_WIDTH) >> 64)
-
-    def step(x):
-        one_minus_x = MASK - x
-        t  = (x * one_minus_x) >> 64      # x*(1-x), Q64
-        xp = (r * t) >> 64                # r*x*(1-x), Q64
-        xp &= MASK
-        if xp == 0 or xp == MASK:         # 逃逸 0/1 不动点
-            xp ^= 0x5DEECE66D
-            xp &= MASK
-        return xp
-
-    for _ in range(burn_in):
-        x = step(x)
-
-    out = bytearray()
-    while len(out) < out_len:
-        x = step(x)
-        out += _le_u64(x)
-
-    return bytes(out[:out_len])
-
 
 def calculate_hamming_distance_and_rate(seq1, seq2):
     n_bits = len(seq1) * 8
@@ -2050,7 +2017,7 @@ def run_fair_benchmark(warmup=10, repeat=100):
 
 
 # ============================================================
-# Engineering microbenchmarks at standardized HQC transcript sizes
+# Engineering microbenchmarks at NIST-reported HQC transcript sizes
 # ============================================================
 # Sizes are taken from NIST IR 8545 (March 2025).  These profiles are
 # deliberately used only to size byte-string inputs to the enhancement layer.
@@ -2249,7 +2216,7 @@ def benchmark_standard_size_enhancement(
         output_dir="results/standard_size_engineering"):
     """
     Benchmark only the proposed enhancement modules at NIST-reported HQC
-    transcript sizes.  This does not benchmark standardized HQC itself.
+    transcript sizes. This does not benchmark a complete HQC implementation.
     Input generation and allocation are excluded from timed regions.
     """
     warmup = int(warmup)
@@ -2412,8 +2379,8 @@ def benchmark_standard_size_enhancement(
     _write_csv_rows(csv_path, rows)
 
     metadata = {
-        "experiment": "enhancement-layer microbenchmark at standardized HQC transcript sizes",
-        "scope_warning": "Not a benchmark or conformance test of standardized HQC implementations.",
+        "experiment": "enhancement-layer microbenchmark at NIST-reported HQC transcript sizes",
+        "scope_warning": "Not a benchmark or conformance test of complete HQC implementations.",
         "size_source": "NIST IR 8545 (March 2025)",
         "warmup": int(warmup),
         "repeat": int(repeat),
@@ -2532,7 +2499,7 @@ def run_standard_size_context_binding(
     with open(json_path, "w") as f:
         json.dump({
             "experiment": "one-bit public-transcript context-binding response",
-            "scope_warning": "This isolates the binding layer; it is not a standardized HQC KEM test.",
+            "scope_warning": "This isolates the binding layer; it is not a complete HQC KEM test.",
             "size_source": "NIST IR 8545 (March 2025)",
             "num_trials_per_component": num_trials,
             "bootstrap_resamples": int(bootstrap_resamples),

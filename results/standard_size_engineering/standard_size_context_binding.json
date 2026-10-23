@@ -94,6 +94,6 @@
       "profile": "HQC-256"
     }
   ],
-  "scope_warning": "This isolates the binding layer; it is not a standardized HQC KEM test.",
+  "scope_warning": "This isolates the binding layer; it is not a complete HQC KEM test.",
   "size_source": "NIST IR 8545 (March 2025)"
 }
