@@ -1,0 +1,100 @@
+{
+  "version": "xor-semantics-fix",
+  "rho": 0.8,
+  "within_row_markov": true,
+  "independent_rows": true,
+  "independent_new_inputs": true,
+  "stage": "pilot",
+  "files": [
+    {
+      "file": "markov_rho80_healthy_batch0.npz",
+      "seed": "134448263094331369876168011565768773478",
+      "batch": 0,
+      "split": "train",
+      "rows": 2000,
+      "regime": "healthy",
+      "sha256": "7d7ea32473262a10bfef976df4ae9ee9d73423b412b57c9720b100dfe1fb6f14"
+    },
+    {
+      "file": "markov_rho80_fixed_batch0.npz",
+      "seed": "134448263094331369876168011565768773478",
+      "batch": 0,
+      "split": "train",
+      "rows": 2000,
+      "regime": "fixed",
+      "sha256": "e26ce27da3b4d47a29fe34ad45ebe88a310c76445333d96ba7853517f24d5780"
+    },
+    {
+      "file": "markov_rho80_healthy_batch1.npz",
+      "seed": "194982880078256488490367862743134666994",
+      "batch": 1,
+      "split": "train",
+      "rows": 2000,
+      "regime": "healthy",
+      "sha256": "f328577d741e3361fc6c52a48d6686f2990b4382b7d5dc5c965d2953b96b393b"
+    },
+    {
+      "file": "markov_rho80_fixed_batch1.npz",
+      "seed": "194982880078256488490367862743134666994",
+      "batch": 1,
+      "split": "train",
+      "rows": 2000,
+      "regime": "fixed",
+      "sha256": "433245e91919ed21d3c34b23541a2fe2abc79b0f751eb5dbb854dcb547e969c1"
+    },
+    {
+      "file": "markov_rho80_healthy_batch2.npz",
+      "seed": "331420053508174262686326066469319644029",
+      "batch": 2,
+      "split": "test",
+      "rows": 2000,
+      "regime": "healthy",
+      "sha256": "4e26c08921ab6d317cff83399b71c5c666afb275a89ce74d3c187a33c92efe10"
+    },
+    {
+      "file": "markov_rho80_fixed_batch2.npz",
+      "seed": "331420053508174262686326066469319644029",
+      "batch": 2,
+      "split": "test",
+      "rows": 2000,
+      "regime": "fixed",
+      "sha256": "c6d3d14305387d05e50ee2329509a7f8adaf9aa85ee4a6b6768d69d6c012a4b7"
+    },
+    {
+      "file": "markov_rho80_healthy_batch3.npz",
+      "seed": "317041209797468925714143130088653482938",
+      "batch": 3,
+      "split": "test",
+      "rows": 2000,
+      "regime": "healthy",
+      "sha256": "21c70078a6ccfbd3d402d7d9abdb0b7cdc3f946f4b1bc7aa549673e43ce6c426"
+    },
+    {
+      "file": "markov_rho80_fixed_batch3.npz",
+      "seed": "317041209797468925714143130088653482938",
+      "batch": 3,
+      "split": "test",
+      "rows": 2000,
+      "regime": "fixed",
+      "sha256": "3b04eedf72af998f04cd0d4bbca0aad22742c1b93a8cf1c1be76af26dde96d38"
+    },
+    {
+      "file": "markov_rho80_healthy_batch4.npz",
+      "seed": "134845185833211867113557196506620361733",
+      "batch": 4,
+      "split": "test",
+      "rows": 2000,
+      "regime": "healthy",
+      "sha256": "58f547ed1b82f9aae2780eaca2be086eb424f69eabfbb5ce89fe3e6be091f16b"
+    },
+    {
+      "file": "markov_rho80_fixed_batch4.npz",
+      "seed": "134845185833211867113557196506620361733",
+      "batch": 4,
+      "split": "test",
+      "rows": 2000,
+      "regime": "fixed",
+      "sha256": "ea87c7965dc1ced52f8982c80b2d89c9f06b40eadea8c4eee56d49173ab0c925"
+    }
+  ]
+}

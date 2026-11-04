@@ -1,0 +1,25 @@
+{
+  "defined_at": "2026-11-02T12:19:06.725895+08:00",
+  "version": "explicit-XOR revision",
+  "scope": "independent Markov pilot, not original-algorithm completion",
+  "model": "within-row stationary symmetric Markov binary chain, stay probability .9, initial bit fair, rows independent",
+  "regimes": [
+    "healthy R",
+    "fixed zero R"
+  ],
+  "batches": 5,
+  "rows_per_batch": 2000,
+  "train_batches": [
+    0,
+    1
+  ],
+  "test_batches": [
+    2,
+    3,
+    4
+  ],
+  "classifier": "common pooled 64-bit ridge, L2=1, threshold .5",
+  "family": "2 conditions x 2 signed contrasts, family alpha .05, two-sided empirical Bernstein",
+  "script_sha256": "f4f56f4b035bdbd1378dbed6878bbd6f4feb157d86f70b9acbf3e183fc0045f8",
+  "no_threshold_or_model_search": true
+}

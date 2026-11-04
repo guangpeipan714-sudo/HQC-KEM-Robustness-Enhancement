@@ -1,0 +1,10 @@
+{
+  "archived_mat_sha256": "5798feaf602a02c5e6c531d2bc4eb0bd9084dd474215c8b7cf662e66975cff67",
+  "notebook_sha256": "c9ad15d9c84c410f820ccac5777849a354b197cb0f495163582601bf45be5fbc",
+  "verification": "All 24 rows match the archived notebook printout at its displayed precision. The original plotting code directly uses these MAT arrays. The Figure 11 displayed labels match the three h=8 ratios.",
+  "figure11_source_rows": 3,
+  "figure12_source_rows": 24,
+  "outputs_per_scheme_and_h": 3000,
+  "empirical_score_ceiling_bits": 11.550746785383243,
+  "plot_values_changed": false
+}

@@ -1,0 +1,55 @@
+{
+  "input": "<run-root>/data\\markov80_raw_1bit.bin",
+  "input_sha256": "8ff22047d6bb46378098fe3eb00214bef14bd8b5783799589dd26d0c85214636",
+  "sample_count": 1000000,
+  "bits_per_symbol": 1,
+  "source_type": "controlled_simulation",
+  "input_stage": "raw_noise_before_conditioning",
+  "certification_claim": false,
+  "restart_assessment": "not_performed",
+  "omp_threads": 8,
+  "runs": [
+    {
+      "track": "iid",
+      "command": [
+        "<run-root>/third_party\\nist\\cpp\\ea_iid.exe",
+        "-i",
+        "-a",
+        "-v",
+        "-o",
+        "<run-root>/results\\markov80\\iid_official.json",
+        "<run-root>/data\\markov80_raw_1bit.bin",
+        "1"
+      ],
+      "official_output_json": "iid_official.json",
+      "complete_execution": true,
+      "executable_sha256": "cf7cdfafaf9cdb5f00b13efe5e9f1bd95c6bbf89681268f19481c5ec86408bfa",
+      "status": "completed",
+      "exit_code": 0,
+      "elapsed_seconds": 413.7601958999876,
+      "log": "iid_stdout_stderr.log",
+      "official_json_exists": true
+    },
+    {
+      "track": "non_iid",
+      "command": [
+        "<run-root>/third_party\\nist\\cpp\\ea_non_iid.exe",
+        "-i",
+        "-a",
+        "-v",
+        "-o",
+        "<run-root>/results\\markov80\\non_iid_official.json",
+        "<run-root>/data\\markov80_raw_1bit.bin",
+        "1"
+      ],
+      "official_output_json": "non_iid_official.json",
+      "complete_execution": true,
+      "executable_sha256": "493610c6de9beb7e0ce52d332298f624761b974532aff2fbe782155078f5aa18",
+      "status": "completed",
+      "exit_code": 0,
+      "elapsed_seconds": 0.42589710000902414,
+      "log": "non_iid_stdout_stderr.log",
+      "official_json_exists": true
+    }
+  ]
+}

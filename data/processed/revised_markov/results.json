@@ -1,0 +1,26 @@
+[
+  {
+    "version": "explicit-XOR revision",
+    "model": "markov_rho80",
+    "regime": "healthy",
+    "n_train_per_arm": 4000,
+    "n_test_per_arm": 6000,
+    "Adv_joint_common_D": 0.0031666666666666666,
+    "Adv_chaos_common_D": 0.005833333333333334,
+    "Delta_common_D": -0.002666666666666667,
+    "Delta_CI_low": -0.041281770936207766,
+    "Delta_CI_high": 0.03860549596770185
+  },
+  {
+    "version": "explicit-XOR revision",
+    "model": "markov_rho80",
+    "regime": "fixed",
+    "n_train_per_arm": 4000,
+    "n_test_per_arm": 6000,
+    "Adv_joint_common_D": 0.0015,
+    "Adv_chaos_common_D": 0.0028333333333333335,
+    "Delta_common_D": -0.0013333333333333335,
+    "Delta_CI_low": -0.038261867673930895,
+    "Delta_CI_high": 0.03719687972961434
+  }
+]

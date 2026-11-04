@@ -1,0 +1,61 @@
+{
+   "IID" : false,
+   "commandline" : "<run-root>/third_party/nist/cpp/ea_non_iid -i -a -v -o <run-root>/results\\markov80\\non_iid_official.json <run-root>/data\\markov80_raw_1bit.bin 1",
+   "dateTimeStamp" : "20261102122947",
+   "errorLevel" : 0,
+   "filename" : "<run-root>/data\\markov80_raw_1bit.bin",
+   "sha256" : "8ff22047d6bb46378098fe3eb00214bef14bd8b5783799589dd26d0c85214636",
+   "testCases" : [
+      {
+         "hOriginal" : 0.99453701844421338,
+         "mcvEstimateMode" : 500609.0,
+         "mcvEstimatePHat" : 0.50060899999999997,
+         "mcvEstimatePU" : 0.50189691434040529,
+         "testCaseDesc" : "Most Common Value"
+      },
+      {
+         "hOriginal" : 0.07683319824361004,
+         "testCaseDesc" : "Collision Test (for bit strings only)"
+      },
+      {
+         "hOriginal" : 0.15809372199168223,
+         "testCaseDesc" : "Markov Test (for bit strings only)"
+      },
+      {
+         "hOriginal" : 0.10535070058579162,
+         "testCaseDesc" : "Compression Test (for bit strings only)"
+      },
+      {
+         "tTupleRes" : 0.15094152274707606,
+         "testCaseDesc" : "T-Tuple Test"
+      },
+      {
+         "lrsRes" : 0.27307282591724769,
+         "testCaseDesc" : "LRS Test"
+      },
+      {
+         "hOriginal" : 0.21357208844165707,
+         "testCaseDesc" : "Multi Most Common in Window Test"
+      },
+      {
+         "hOriginal" : 0.15043630871117861,
+         "testCaseDesc" : "Lag Prediction Test"
+      },
+      {
+         "hOriginal" : 0.15043806309109051,
+         "testCaseDesc" : "Multi Markov Model with Counting Test (MultiMMC)"
+      },
+      {
+         "hOriginal" : 0.15043725102895902,
+         "testCaseDesc" : "LZ78Y Test"
+      },
+      {
+         "dataWordSize" : 1.0,
+         "hAssessed" : 0.07683319824361004,
+         "hOriginal" : 0.07683319824361004,
+         "testCaseDesc" : "Overall"
+      }
+   ],
+   "toolVersion" : "1.1.8",
+   "type" : ""
+}
