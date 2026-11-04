@@ -3,16 +3,8 @@ message: "Cite the versioned software archive when using the released HQC-KEM pr
 type: software
 title: HQC-KEM Robustness Enhancement
 authors:
-  - given-names: Zhiyong
-    family-names: Cui
   - given-names: Guangpei
     family-names: Pan
-  - given-names: Jun
-    family-names: Zhang
-  - given-names: Jinwei
-    family-names: Luo
-  - given-names: Zhen
-    family-names: Wu
 repository-code: https://github.com/guangpeipan714-sudo/HQC-KEM-Robustness-Enhancement
 identifiers:
   - type: doi
