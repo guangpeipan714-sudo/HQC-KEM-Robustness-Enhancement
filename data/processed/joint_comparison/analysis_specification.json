@@ -1,0 +1,13 @@
+{
+  "analysis_kind": "secondary reanalysis of previously generated confirmation samples",
+  "prior_data_visibility": true,
+  "new_preregistration": false,
+  "direct_arm": "A_joint = SHAKE256(label||R||C||0x34,8)",
+  "chaos_arm": "B = original effective-Sage mix(label,R,C,8)",
+  "primary_classifier": "one common pooled ridge D, 64 output bits, lambda=1, unpenalized intercept, threshold=.5",
+  "training": "batches 0,1; 40000 positives per arm; U duplicated only for class balancing",
+  "testing": "batches 2,3,4; 60000 independently generated rows per arm; same U and same D",
+  "simultaneous_family": "18 conditions x 2 signed contrasts = 36; family alpha=.05",
+  "secondary": "per-arm trained ridge descriptive only, no extra superiority testing",
+  "note": "This direct one-SHAKE arm differs in SHAKE call count from original B; equal-structure two-SHAKE A remains the historical causal ablation."
+}

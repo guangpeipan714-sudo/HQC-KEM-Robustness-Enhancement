@@ -1,0 +1,8 @@
+{
+  "revision_sha256": "9bde6e768a74531afb239e323a3e333935e2479fa1bc29a3304edcf08d7644dd",
+  "python": "3.7.10 (default, May  5 2021, 11:43:58) \n[GCC 10.2.0]",
+  "n_per_condition": 10000,
+  "condition_count": 2,
+  "algorithm_changes": "Only explicit-xor bug fix",
+  "interpretation": "New independent pilot, not a completed original-algorithm Markov experiment."
+}

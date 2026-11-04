@@ -1,0 +1,36 @@
+{
+  "verified_core_notebook_sha256": "9bde6e768a74531afb239e323a3e333935e2479fa1bc29a3304edcf08d7644dd",
+  "current_notebook_sha256": "9d223d61e1210eb0ad82ef21e368f91c0cd9d6e8b3e5ae3585ab65f052472b44",
+  "only_additional_change": "One collector assignment now calls the actual mixing path, not os.urandom.",
+  "effective_Q64_source_unchanged": true,
+  "effective_Q64_source_sha256": "d0abc80d8b19c43739f450b53cb135ebec529d9cdbe9fe16a69ccd28a973d33b",
+  "saved_confirmation_compatibility_still_applies_to_Q64_core": true,
+  "test_cases": [
+    {
+      "seed_hex": "00000000000000000000000000000000",
+      "R_hex": "b6aeaacced5a7749943e22a021e5faa8ec641281ef221a511d22240db05770d1",
+      "bytes_requested": 32,
+      "output_hex": "216ca0380f9741e35981006d365feacdfa1afe9bc6ed920374c5f0c992fb97c5",
+      "matches_actual_mix_function": true,
+      "repeated_assignment_deterministic": true
+    },
+    {
+      "seed_hex": "02000000000000000000000000000000",
+      "R_hex": "c8944ba052882dafab92c1f9fcc3fcfa04b08eeb975cb7a1d037dc2cadc534fe",
+      "bytes_requested": 32,
+      "output_hex": "a96126c159ebcc9a9e8e22e35c2e92f07f56be451dc42d9343aa12fcb7d4f3dc",
+      "matches_actual_mix_function": true,
+      "repeated_assignment_deterministic": true
+    },
+    {
+      "seed_hex": "a494241cff2236be4dfac1e49853543c",
+      "R_hex": "9b382eea2bfb6f0f4e478cb1f5be09fb26801abb4d339ac886cd57e3b0cce2ec",
+      "bytes_requested": 32,
+      "output_hex": "d6805c7c32b33c958c9a80c529162b5d9f58f04e0f3c4b43c079fa309e283977",
+      "matches_actual_mix_function": true,
+      "repeated_assignment_deterministic": true
+    }
+  ],
+  "large_collector_run_performed": false,
+  "reason": "The hard-coded 100 x 1MB collection was not repeated; exact assignment checked with 32-byte requests."
+}

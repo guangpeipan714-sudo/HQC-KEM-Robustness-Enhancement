@@ -1,0 +1,3 @@
+﻿version,model,regime,n_train_per_arm,n_test_per_arm,Adv_joint_common_D,Adv_chaos_common_D,Delta_common_D,Delta_CI_low,Delta_CI_high
+explicit-XOR revision,markov_rho80,healthy,4000,6000,0.0031666666666666666,0.005833333333333334,-0.002666666666666667,-0.041281770936207766,0.03860549596770185
+explicit-XOR revision,markov_rho80,fixed,4000,6000,0.0015,0.0028333333333333335,-0.0013333333333333335,-0.038261867673930895,0.03719687972961434

@@ -1,0 +1,50 @@
+{
+  "purpose": "official-tool simulation diagnostics, not physical entropy validation",
+  "restart_data": "not collected; no device restart experiment exists",
+  "numpy_version": "2.5.2",
+  "python_platform": "Windows-11-10.0.26200-SP0",
+  "models": [
+    {
+      "model": "biased70",
+      "file": "biased70_raw_1bit.bin",
+      "source_type": "controlled_simulation",
+      "stage": "raw_pre_Logistic_pre_SHAKE",
+      "physical_source_samples": false,
+      "bytes_per_sample": 1,
+      "bits_per_symbol": 1,
+      "sample_count": 1000000,
+      "storage": "one byte per sample, values 0x00 or 0x01, in generation order",
+      "generator": "numpy.random.Generator(PCG64)",
+      "seed": 202611020701,
+      "observed_p_one": 0.700559,
+      "observed_lag1_correlation": 0.0006006304595701869,
+      "sha256": "147bc57c4ee638462206f991dbdb26e0bb6ac2bf9a805da25473f36ab61ccf32",
+      "kind": "iid_bernoulli",
+      "p_one": 0.7,
+      "theoretical_min_entropy_per_sample_bits": 0.5145731728297583
+    },
+    {
+      "model": "markov80",
+      "file": "markov80_raw_1bit.bin",
+      "source_type": "controlled_simulation",
+      "stage": "raw_pre_Logistic_pre_SHAKE",
+      "physical_source_samples": false,
+      "bytes_per_sample": 1,
+      "bits_per_symbol": 1,
+      "sample_count": 1000000,
+      "storage": "one byte per sample, values 0x00 or 0x01, in generation order",
+      "generator": "numpy.random.Generator(PCG64)",
+      "seed": 202611020801,
+      "observed_p_one": 0.499391,
+      "observed_lag1_correlation": 0.8004115038304843,
+      "sha256": "8ff22047d6bb46378098fe3eb00214bef14bd8b5783799589dd26d0c85214636",
+      "kind": "stationary_symmetric_first_order_binary_Markov",
+      "p_initial_one": 0.5,
+      "p_flip": 0.1,
+      "rho_lag1": 0.8,
+      "theoretical_marginal_min_entropy_bits": 1.0,
+      "theoretical_max_block_probability": "0.5 * 0.9**(n-1)",
+      "theoretical_asymptotic_block_min_entropy_rate_bits_per_sample": 0.15200309344504995
+    }
+  ]
+}
